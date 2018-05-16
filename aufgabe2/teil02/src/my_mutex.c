@@ -1,16 +1,17 @@
-/*
- * my_mutex.c
- *  Created on: 05.05.2018
- *      Author: Janaina Flor Kaufmann
- */
-
-
+/*********************************************************
+ * @file 	my_Mutex.c
+ * @author 	Vadim Budagov, Janaina Kaufmann
+ * @Version 1.0
+ * Created on: 01.05.2018
+ * @brief	Implementier und realisiert die Header-Datei my_Mutex.h,
+ * 			welche entweder mit SEMAPHORE oder mit CONDITIONAL VARIABLE arbeitet.
+ *********************************************************/
+#include "my_mutex.h"
 #include <stdio.h>
-#include <pthread.h>
 //#include <semaphore.h>
+#include <pthread.h>
 #include "my_error.h"
 #include "FIFO.h"
-#include "my_mutex.h"
 
 #ifdef _SEMAPHORE_H
 sem_t semOccupied;
@@ -23,104 +24,118 @@ pthread_mutex_t mutex;
 
 int counter;
 
+static void
+cleanup_handler(void * args){
+    printf("Cleaning...\n");
+
+    errorhandler((pthread_mutex_unlock(&mutex)),
+            "Fail to unlock mutex");
+}
+
 void
-my_initiate () {
+my_init () {
     queue_init();
-
-    counter = 0;
-
-    #ifdef _SEMAPHORE_H
-    errorhandler(sem_init(&semFree, 0, PUFFER_SIZE), 
+#ifdef _SEMAPHORE_H
+	errorhandler(sem_init(&semFree, 0, PUFFER_SIZE),
             "Fail to initiate -semFree-");
-    errorhandler(sem_init(&semOccupied, 0, 0), 
-            "Fail to initiate -semOccupied-");
-    #else
+    errorhandler(sem_init(&semOccupied, 0, 0),
+            "Fail to initiate -occupiedFree-");
+#else
 	errorhandler(pthread_cond_init(&cond, NULL),
             "Fail to initiate -produce_cond");
-    #endif
-
+#endif
 	errorhandler(pthread_mutex_init(&mutex, NULL),
-            "Fail to initiate -mutex-");
+            "Fail to initialize -mutex-");
 }
 
 void
 my_producer(char character) {
-    pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
-    
-
-    #ifdef _SEMAPHORE_H
-    sem_wait(&semFree);
-    pthread_mutex_lock(&mutex);
-    #else
-    pthread_mutex_lock(&mutex);
+#ifdef _SEMAPHORE_H
+    errorhandler(sem_wait(&semFree),
+            "Fail to wait -semFree-");
+    errorhandler(pthread_mutex_lock(&mutex),
+            "Fail to lock -mutex-");
+#else
+    errorhandler(pthread_mutex_lock(&mutex),
+            "Fail to lock -mutex-");
+    pthread_cleanup_push(cleanup_handler, NULL);
     while (counter == PUFFER_SIZE) {
     	errorhandler(pthread_cond_wait(&cond, &mutex),
                 "Fail to wait -produce_cond-");
+
     }
-    #endif
+    pthread_cleanup_pop(0);
+#endif
     queue_put(character);
     counter++;
-    printf(BLU "Character produce: %c\
+
+#ifdef _SEMAPHORE_H
+    errorhandler(pthread_mutex_unlock(&mutex),
+            "Fail to unlock -mutex-");
+    errorhandler(sem_post(&semOccupied),
+            "Fail to post -semOccupied-");
+#else
+    errorhandler(pthread_cond_broadcast(&cond),
+            "Fail to signal -cond-");
+    errorhandler(pthread_mutex_unlock(&mutex),
+            "Fail to unlock -mutex-");
+#endif
+  printf(YEL "Character produce: %c\
           \nNumber of occupied space on buffer: %d\n\n"RESET , character, counter);
-    #ifdef _SEMAPHORE_H
-    pthread_mutex_unlock(&mutex);
-    sem_post(&semOccupied);
-    #else
-	pthread_cond_signal(&cond);
-    pthread_mutex_unlock(&mutex);
-    #endif
 
-
-    pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
 }
 
 void
 my_consumer() {
-    char character; 
-    pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
-
-    
-
-    #ifdef _SEMAPHORE_H
-    sem_wait(&semOccupied);
-    pthread_mutex_lock(&mutex);
-    #else
-    pthread_mutex_lock(&mutex);
+    char character;
+    //errorhandler(pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL),
+    //        "Fail to disable cancel state");
+#ifdef _SEMAPHORE_H
+    errorhandler(sem_wait(&semOccupied),
+            "Fail to wait -semOccupied-");
+    errorhandler(pthread_mutex_lock(&mutex),
+            "Fail to lock -mutex-");
+#else
+    errorhandler(pthread_mutex_lock(&mutex),
+            "Fail to lock -mutex-");
+    pthread_cleanup_push(cleanup_handler, NULL);
 	while (counter == 0) {
 		errorhandler(pthread_cond_wait(&cond, &mutex),
                 "Fail to wait -consume_cond-");
 	}
-    #endif
+    pthread_cleanup_pop(0);
+#endif
     queue_get(&character);
     counter--;
-    printf(GRN"Character consume: %c\
+
+#ifdef _SEMAPHORE_H
+    errorhandler(pthread_mutex_unlock(&mutex),
+            "Fail to unlock -mutex-");
+    errorhandler(sem_post(&semFree),
+            "Fail to post -semFree-");
+#else
+    errorhandler(pthread_cond_broadcast(&cond),
+            "Fail to signal -cond-");
+    errorhandler(pthread_mutex_unlock(&mutex),
+            "Fail to unlock -mutex-");
+#endif
+  printf(GRN"Character consume: %c\
           \nNumber of occupied space on buffer: %d\n\n"RESET, character, counter);
-    #ifdef _SEMAPHORE_H
-    pthread_mutex_unlock(&mutex);
-    sem_post(&semFree);
-    #else
-    pthread_cond_signal(&cond);
-    pthread_mutex_unlock(&mutex);
-    #endif
 
-
-    pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
 }
 
 void
-my_clean(){ 
+my_clean(){
     queue_clean();
-
-    #ifdef _SEMAPHORE_H
-    errorhandler(sem_destroy(&semFree),
+#ifdef _SEMAPHORE_H
+	errorhandler(sem_destroy(&semFree),
             "Fail to destroy -semFree-");
-    errorhandler(sem_destroy(&semOccupied),
-            "Fail to destroy -semOccupied-");
-    #else
+	errorhandler(sem_destroy(&semOccupied),
+            "Fail to destroy -occupiedFree-");
+#else
 	errorhandler(pthread_cond_destroy(&cond),
             "Fail to destroy -consume_cond-");
-    #endif
-
+#endif
     errorhandler(pthread_mutex_destroy(&mutex),
             "Fail to destroy -mutex-");
 }
