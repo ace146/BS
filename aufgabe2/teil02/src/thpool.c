@@ -61,9 +61,8 @@ thpool_add_task (struct threadpool * pool, struct task job, int prio) {
                   "Fail to lock mutex");
     errorhandler (pthread_mutex_unlock(&(pool->mutex)),
                   "Fail to unlock mutex");
-    errorhandler(sendToTaskQueue(pool->taskqueue, job, prio, false),
+    errorhandler(sendToTaskQueue(pool->taskqueue, job, prio, true),
                  "Fail to send a Task");
-    printf("added_task!!!\n");
     return 0;
 }
 
@@ -72,8 +71,8 @@ thpool_routine(void * threadpool) {
     struct threadpool *pool = (struct threadpool *) threadpool;
     struct task job;
 
-    pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
-    pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
+    //pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+    //pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
     while(true) {
 
         errorhandler (pthread_mutex_lock(&(pool->mutex)),
