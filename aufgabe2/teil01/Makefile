@@ -50,3 +50,6 @@ clean:
 delete: clean
 	@echo -e "${RED}BINDIR geloescht! ${NC}"
 	rm -r -f $(BINDIR)
+
+run:
+	bin/./main

@@ -10,9 +10,12 @@
 #include <unistd.h>
 #include <pthread.h>
 #include <stdbool.h>
+
 #include "thpool.h"
 #include "my_error.h"
 #include "my_mutex.h"
+#include "my_color.h"
+
 #include "taskqueue.h"
 #include "getcharTimeout.h"
 
@@ -33,18 +36,18 @@ bool finished = false;
 
 void
 quit_task () {
-    printf("Quit task...\n");
+    printf(MAG"Quit task...\n"RESET);
 
     thpool_destroy(consumerPool); 
     thpool_destroy(producerPool); 
     my_clean();
     finished = true;
-    printf("finish\n");
+    printf(MAG"Quit task finished\n"RESET);
 }
 
 void
 producer_task (void * argument) {
-    printf("Producer Task...\n");
+    printf(MAG"Producer Task...\n"RESET);
     char * character = (char *)argument;
 
     if (*character == 'a') {
@@ -57,7 +60,7 @@ producer_task (void * argument) {
 
 void
 consumer_task() {
-    printf("Consumer Task started...\n");
+    printf(MAG"Consumer Task started...\n"RESET);
 
     my_consumer();
 }
@@ -84,7 +87,7 @@ control_thread () {
             job.routineForTask = producer_task;
             job.arg = &argument;
             thpool_add_task(producerPool, job, 0);
-        }
+       }
 
         if (consumer) {
             job.routineForTask = consumer_task;
@@ -97,19 +100,24 @@ control_thread () {
             case 'p':
             case 'P':
                 if (producer && big) {
-                    big = false;
-                } else if (producer && !big) { 
-                    producer = false;
+                  printf(MAG"Producer produces small characters. \n"RESET);
+                  big = false;
+                } else if (producer && !big) {
+                  printf(MAG"Producer stoped. \n"RESET);
+                  producer = false;
                 } else if (!producer && !big){
-                    big = true;
-                    producer = true;
+                  printf(MAG"Producer started and produces big characters. \n"RESET);
+                  big = true;
+                  producer = true;
                 }
                 break;
             case 'c':
             case 'C':
                 if (consumer) {
+                  printf(MAG"Consumer stoped.\n"RESET);
                     consumer = false;
                 } else { 
+                  printf(MAG"Consumer started.\n"RESET);
                     consumer = true;
                 }
                 break;
@@ -122,11 +130,11 @@ control_thread () {
                 break;
             case 'h':
             case 'H':
-                printf("-----------HELP----------\
+                printf(MAG"-----------HELP----------\
                       \n-1   Start/Stop Producer_1\
                       \n-2   Start/Stop Producer_2\
                       \n-c/C Start/Stop Consumer\
-                      \n-q/Q Quit Main Thread\n");
+                      \n-q/Q Quit Main Thread\n"RESET);
                 break;
             default:
                 break;
@@ -141,17 +149,29 @@ main (void) {
     destroyTaskQueue(CONSUMERTASKS);
     destroyTaskQueue(PRODUCERTASKS);
 
-    producertasks = createTaskQueue(PRODUCERTASKS, 10);
-    consumertasks = createTaskQueue(CONSUMERTASKS, 10);
-    printf("Init\n");
-    my_initiate();
+    printf(MAG"Initializing from Task Queues...\n"RESET);
+    producertasks = createTaskQueue(PRODUCERTASKS, NUM_TASKS);
+    consumertasks = createTaskQueue(CONSUMERTASKS, NUM_TASKS);
+    printf(MAG"Initializing my_mutex...\n"RESET);
+    errorhandler (my_init(),
+                  "Fail to my_init" );
 
-    producerPool = thpool_create(producertasks);
-    consumerPool = thpool_create(consumertasks);
-    printf("Create Threads\n");
-    pthread_create(&thread_control, NULL, control_thread, NULL);
+    printf(MAG"Initializing pools...\n"RESET);
+    if ((producerPool = thpool_create(producertasks)) == NULL) {
+        perror ("Fail to create producerPool");
+    }
 
-    pthread_join(thread_control, NULL);
+    if ((consumerPool = thpool_create(consumertasks)) == NULL) {
+        perror ("Fail to create consumerPool");
+    }
+
+    printf(MAG"Creating Thread_control...\n"RESET);
+    errorhandler (pthread_create(&thread_control, NULL, control_thread, NULL),
+                  "Fail to create -thread_control");
+
+    printf(MAG"Join thread_control...\n"RESET);
+    errorhandler (pthread_join(thread_control, NULL),
+                  "Fail to join -thread_control-");
 
     while(true) {
         if (finished) {

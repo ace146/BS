@@ -1,29 +1,30 @@
 /*********************************************************
- * @file 	FIFO.c
- * @author 	Vadim Budagov, Janaina Kaufmann
- * @Version 1.0
- * Created on: 01.05.2018
- * @brief	C-Modul, welches FIFO.h implementiert,
- * 			siehe FIFO.h
+ * @file        FIFO.c
+ * @author      Vadim Budagov, Janaina Kaufmann
+ * @Version     1.0
+ * Created on:  01.05.2018
+ * @brief       Queue implemantation.
  *********************************************************
  */
 #include <stdio.h>
 #include <stdlib.h>
-#include "my_error.h"
+
 #include "FIFO.h"
+#include "my_error.h"
+#include "my_color.h"
 
 Queue* dummy = NULL;
 
 int
 queue_init() {
     if ((dummy = malloc(sizeof(Queue))) != NULL) {
-        dummy->buchstabe = '0';
+        dummy->character = '0';
         dummy->previous = NULL;
         return errno;
     } else {
         errno = EADDRNOTAVAIL;
         perror(RED"Fail to initiate Queue!"RESET);
-	}
+    }
     return errno;
 }
 
@@ -41,13 +42,12 @@ queue_put(char newCharacter) {
     if ((newQueue = malloc(sizeof(Queue))) == NULL) {
         errno = EADDRNOTAVAIL;
         perror(RED"Fail to allocate -newQueue"RESET);
-		return errno;
+        return errno;
     }
 
-    newQueue->buchstabe = newCharacter;
+    newQueue->character = newCharacter;
 
-
-	if (dummy->previous == NULL) {
+    if (dummy->previous == NULL) {
         dummy->previous = newQueue;
         newQueue->previous = NULL;
     } else {
@@ -64,9 +64,9 @@ int
 queue_get(char *currChar) {
     Queue* curr = dummy;
 
-	if (dummy->previous != NULL) {
+    if (dummy->previous != NULL) {
         curr = dummy->previous;
-        *currChar = curr->buchstabe;
+        *currChar = curr->character;
         dummy->previous = curr->previous;
         free(curr);
     } else {

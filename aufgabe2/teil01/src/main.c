@@ -51,20 +51,16 @@ producer_thread (void * args) {
     pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
     while (true) {
         if (*character == 'a') {
-         // printf("Vor Producer_1\n");
             errorhandler(pthread_mutex_lock(&producer_1_mutex),
                          "Fail to lock -producer_1_mutex-");
             errorhandler(pthread_mutex_unlock(&producer_1_mutex),
                     "Fail to unlock -producer_1_mutex-");
-         // printf("Hinter Producer_1\n");
             my_producer(*character + (i % ALPHABET_LENGHT));
         } else {
-         // printf("Vor Producer_2\n");
             errorhandler(pthread_mutex_lock(&producer_2_mutex),
                     "Fail to lock -producer_2_mutex-");
             errorhandler(pthread_mutex_unlock(&producer_2_mutex),
                     "Fail to unlock -producer_2_mutex-");
-         // printf("Hinter Producer_2\n");
             my_producer(*character + (i % ALPHABET_LENGHT));
         }
         i++;

@@ -15,11 +15,8 @@ thpool_create(mqd_t taskqueue) {
     if ((pool = malloc(sizeof(struct threadpool))) == NULL) {
         errno = EADDRNOTAVAIL;
         perror("Fail to allocate -pool-");
-        goto err; 
+        goto err;
     }
-
-    pool->started = 0;
-    pool->countTask = 0;
 
     if ((pool->threads = malloc(sizeof(pthread_t) * NUM_THREADS)) == NULL) {
         errno = EADDRNOTAVAIL;
@@ -29,8 +26,8 @@ thpool_create(mqd_t taskqueue) {
 
     pool->taskqueue = taskqueue;
 
-    errorhandler(pthread_mutex_init(&(pool->mutex), NULL), 
-            "Fail to initialize -mutex-");
+    errorhandler(pthread_mutex_init(&(pool->mutex), NULL),
+                "Fail to initialize -mutex-");
     if (errno) {
         goto err;
     }
@@ -41,11 +38,7 @@ thpool_create(mqd_t taskqueue) {
             thpool_destroy(pool);
             return NULL;
         }
-        printf("Thread[%d]\n", i);
-        pool->started++; 
-    }
-
-    pool->destroy = false;
+   }
 
     return pool;
 
@@ -63,12 +56,14 @@ thpool_add_task (struct threadpool * pool, struct task job, int prio) {
         perror("Invalid Pool");
         return errno;
     }
-    errorhandler(pthread_mutex_lock(&(pool->mutex)),
-            "Fail to lock -mutex-");
-    sendToTaskQueue(pool->taskqueue, job, prio, false);
-    printf("added_task!!!\n");
-    pool->countTask++;
 
+    errorhandler (pthread_mutex_lock(&(pool->mutex)),
+                  "Fail to lock mutex");
+    errorhandler (pthread_mutex_unlock(&(pool->mutex)),
+                  "Fail to unlock mutex");
+    errorhandler(sendToTaskQueue(pool->taskqueue, job, prio, false),
+                 "Fail to send a Task");
+    printf("added_task!!!\n");
     return 0;
 }
 
@@ -77,25 +72,20 @@ thpool_routine(void * threadpool) {
     struct threadpool *pool = (struct threadpool *) threadpool;
     struct task job;
 
+    pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+    pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
     while(true) {
 
-
+        errorhandler (pthread_mutex_lock(&(pool->mutex)),
+                      "Fail to lock mutex");
+        errorhandler (pthread_mutex_unlock(&(pool->mutex)),
+                      "Fail to unlock mutex");
         job = receiveFromTaskQueue(pool->taskqueue);
-        pool->countTask--;
-
-        pthread_mutex_unlock(&(pool->mutex));
 
         (*(job.routineForTask))(job.arg);
 
-        
-        if (pool->destroy) {
-            break;
-        }
-
     }
 
-    pool->started--;
-    pthread_mutex_unlock(&(pool->mutex));
     pthread_exit(0);
     return NULL;
 }
@@ -111,31 +101,24 @@ thpool_destroy(struct threadpool * pool) {
     }
 
     errorhandler(pthread_mutex_lock(&(pool->mutex)),
-            "Fail to lock -mutex-");
+                "Fail to lock -mutex-");
     if (errno) {
-        return errno; 
+        return errno;
     }
 
     do {
-        if (pool->destroy) {
-            errno = EACCES;
-            perror("Destroy exist already!!");
-            break;
-        }
 
-        pool->destroy = true;
+        errorhandler(pthread_mutex_unlock(&(pool->mutex)),
+                    "Fail to unlock    -mutex-");
 
-
-        errorhandler(pthread_mutex_unlock(&(pool->mutex)), 
-                "Fail to unlock  -mutex-");
-        if (errno) {
-            break;
+        for (i = 0; i < NUM_THREADS; i++) {
+            errorhandler(pthread_cancel(pool->threads[i]),
+                        "Fail to cancel");
         }
 
         for (i = 0; i < NUM_THREADS; i++) {
-            errorhandler(pthread_join(pool->threads[i], NULL), 
-                "Fail to join");
-            printf("Cancel Thread [%d]\n", i);
+            errorhandler(pthread_join(pool->threads[i], NULL),
+                        "Fail to join");
         }
 
 
@@ -144,6 +127,7 @@ thpool_destroy(struct threadpool * pool) {
     if (!errno) {
         thpool_free(pool);
     }
+
     return errno;
 }
 
@@ -158,9 +142,8 @@ thpool_free (struct threadpool * pool) {
     if (pool->threads) {
         free(pool->threads);
         closeTaskQueue(pool->taskqueue);
-
         errorhandler(pthread_mutex_unlock(&(pool->mutex)),
-                "Fail to lock -mutex-");
+                    "Fail to lock -mutex-");
     }
 
     free(pool);

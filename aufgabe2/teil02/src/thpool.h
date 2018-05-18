@@ -4,16 +4,13 @@
 #include <pthread.h>
 //#include <semaphore.h>
 
-#define NUM_THREADS 1
+#define NUM_THREADS 10
 #define NUM_TASKS  10
 
 struct threadpool {
     pthread_mutex_t mutex;
     pthread_t * threads;
     mqd_t taskqueue;
-    int countTask;
-    int started;
-    bool destroy;
 };
 
 extern struct threadpool* thpool_create(mqd_t taskqueue);
