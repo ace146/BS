@@ -71,8 +71,8 @@ thpool_routine(void * threadpool) {
     struct threadpool *pool = (struct threadpool *) threadpool;
     struct task job;
 
-    //pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
-    //pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
+    pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+    pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
     while(true) {
 
         errorhandler (pthread_mutex_lock(&(pool->mutex)),
@@ -115,6 +115,8 @@ thpool_destroy(struct threadpool * pool) {
                         "Fail to cancel");
         }
 
+        closeTaskQueue(pool->taskqueue);
+
         for (i = 0; i < NUM_THREADS; i++) {
             errorhandler(pthread_join(pool->threads[i], NULL),
                         "Fail to join");
@@ -140,8 +142,7 @@ thpool_free (struct threadpool * pool) {
 
     if (pool->threads) {
         free(pool->threads);
-        closeTaskQueue(pool->taskqueue);
-        errorhandler(pthread_mutex_unlock(&(pool->mutex)),
+        errorhandler(pthread_mutex_destroy(&(pool->mutex)),
                     "Fail to lock -mutex-");
     }
 

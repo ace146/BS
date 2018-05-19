@@ -32,16 +32,16 @@ mqd_t producertasks;
 mqd_t consumertasks;
 int count = 0;
 
-bool finished = false;
-
 void
 quit_task () {
     printf(MAG"Quit task...\n"RESET);
 
-    thpool_destroy(consumerPool); 
-    thpool_destroy(producerPool); 
+    thpool_destroy(producerPool);
+    destroyTaskQueue(PRODUCERTASKS);
+    thpool_destroy(consumerPool);
+    destroyTaskQueue(CONSUMERTASKS);
+
     my_clean();
-    finished = true;
     printf(MAG"Quit task finished\n"RESET);
 }
 
@@ -61,7 +61,6 @@ producer_task (void * argument) {
 void
 consumer_task() {
     printf(MAG"Consumer Task started...\n"RESET);
-
     my_consumer();
 }
 
@@ -76,6 +75,8 @@ control_thread () {
     char argument = 'A';
     struct task job = {NULL, NULL};
 
+    pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+    pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
     while (true) {
         if (big) {
             argument = 'A';
@@ -125,7 +126,8 @@ control_thread () {
             case 'Q':
                 job.routineForTask = quit_task;
                 job.arg = NULL;
-                thpool_add_task(consumerPool, job, 1);
+                //thpool_add_task(consumerPool, job, 1);
+                (*(job.routineForTask))(job.arg);
                 pthread_exit(0);
                 break;
             case 'h':
@@ -172,15 +174,6 @@ main (void) {
     printf(MAG"Join thread_control...\n"RESET);
     errorhandler (pthread_join(thread_control, NULL),
                   "Fail to join -thread_control-");
-
-    while(true) {
-        if (finished) {
-            break;
-        }
-    }
-
-    destroyTaskQueue(CONSUMERTASKS);
-    destroyTaskQueue(PRODUCERTASKS);
 
     return 0;
 
