@@ -126,7 +126,6 @@ control_thread () {
             case 'Q':
                 job.routineForTask = quit_task;
                 job.arg = NULL;
-                //thpool_add_task(consumerPool, job, 1);
                 (*(job.routineForTask))(job.arg);
                 pthread_exit(0);
                 break;
@@ -147,9 +146,6 @@ control_thread () {
 int
 main (void) {
     printf("---------------------------MAIN---------------------------\n");
-
-    destroyTaskQueue(CONSUMERTASKS);
-    destroyTaskQueue(PRODUCERTASKS);
 
     printf(MAG"Initializing from Task Queues...\n"RESET);
     producertasks = createTaskQueue(PRODUCERTASKS, NUM_TASKS);

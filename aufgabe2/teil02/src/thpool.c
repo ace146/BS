@@ -105,25 +105,23 @@ thpool_destroy(struct threadpool * pool) {
         return errno;
     }
 
-    do {
+    errorhandler(pthread_mutex_unlock(&(pool->mutex)),
+                "Fail to unlock    -mutex-");
+    if (errno) {
+        return errno;
+    }
 
-        errorhandler(pthread_mutex_unlock(&(pool->mutex)),
-                    "Fail to unlock    -mutex-");
+    for (i = 0; i < NUM_THREADS; i++) {
+        errorhandler(pthread_cancel(pool->threads[i]),
+                     "Fail to cancel");
+    }
 
-        for (i = 0; i < NUM_THREADS; i++) {
-            errorhandler(pthread_cancel(pool->threads[i]),
-                        "Fail to cancel");
+    closeTaskQueue(pool->taskqueue);
+
+    for (i = 0; i < NUM_THREADS; i++) {
+        errorhandler(pthread_join(pool->threads[i], NULL),
+                     "Fail to join");
         }
-
-        closeTaskQueue(pool->taskqueue);
-
-        for (i = 0; i < NUM_THREADS; i++) {
-            errorhandler(pthread_join(pool->threads[i], NULL),
-                        "Fail to join");
-        }
-
-
-    } while(0);
 
     if (!errno) {
         thpool_free(pool);
