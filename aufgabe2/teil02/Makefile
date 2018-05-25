@@ -13,7 +13,7 @@ TESTDIR = test
 SRC     = $(wildcard $(SRCDIR)/*.c)
 OBJ     = $(patsubst $(SRCDIR)/%,$(OBJDIR)/%,$(SRC:.c=.o))
 DEPS    = $(OBJ:.o=.d)
-# ifdef cond.c
+
 TARGETS = $(TESTDIR)/main
 
 RED = \033[0;31m
@@ -32,7 +32,7 @@ $(OBJDIR)/%.o: $(SRCDIR)/%.c
 	@echo -e "${RED}Ein Objekt fuer $< erstellt! ${NC}"
 	@mkdir -p $(@D)
 	$(CC) $(CFLAGS) -c $< -o $@
-# ifdef cond.c
+
 $(TESTDIR)/main: $(OBJDIR)/main.o $(OBJDIR)/my_mutex.o $(OBJDIR)/FIFO.o $(OBJDIR)/getcharTimeout.o $(OBJDIR)/taskqueue.o $(OBJDIR)/thpool.o
 	@echo -e "${RED}EXECUTABLE von $< ${NC}"
 	@mkdir -p $(@D)
